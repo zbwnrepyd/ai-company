@@ -15,18 +15,34 @@ export const trustMrrStartupListItemSchema = z.object({
 });
 
 export const trustMrrStartupListResponseSchema = z.object({
-  items: z.array(trustMrrStartupListItemSchema),
-  nextPage: z.number().int().nullable().optional(),
+  data: z.array(trustMrrStartupListItemSchema),
+  meta: z
+    .object({
+      hasMore: z.boolean().optional(),
+    })
+    .optional(),
 });
 
-export const trustMrrStartupDetailSchema = z.object({
+const trustMrrTechStackItemSchema = z.object({
   slug: z.string().min(1),
-  description: z.string().nullable().optional(),
-  targetAudience: z.string().nullable().optional(),
-  onSale: z.boolean().nullable().optional(),
-  askingPrice: z.union([z.number(), z.string()]).nullable().optional(),
-  techStack: z.array(z.string()).nullable().optional(),
+  category: z.string().nullable().optional(),
 });
+
+export const trustMrrStartupDetailResponseSchema = z.object({
+  data: z.object({
+    slug: z.string().min(1),
+    description: z.string().nullable().optional(),
+    targetAudience: z.string().nullable().optional(),
+    onSale: z.boolean().nullable().optional(),
+    askingPrice: z.union([z.number(), z.string()]).nullable().optional(),
+    techStack: z.array(trustMrrTechStackItemSchema).nullable().optional(),
+  }),
+});
+
+export const trustMrrStartupDetailSchema = trustMrrStartupDetailResponseSchema.transform((payload) => ({
+  ...payload.data,
+  techStack: payload.data.techStack?.map((item) => item.slug) ?? [],
+}));
 
 export type TrustMrrStartupListItem = z.infer<typeof trustMrrStartupListItemSchema>;
 export type TrustMrrStartupListResponse = z.infer<typeof trustMrrStartupListResponseSchema>;

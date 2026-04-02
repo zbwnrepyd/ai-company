@@ -19,7 +19,7 @@ describe("createTrustMrrClient", () => {
       .fn()
       .mockResolvedValueOnce(
         createJsonResponse({
-          items: [
+          data: [
             {
               slug: "alpha",
               name: "Alpha",
@@ -29,12 +29,12 @@ describe("createTrustMrrClient", () => {
               revenue: { total: 12000, last30Days: 5000 },
             },
           ],
-          nextPage: 2,
+          meta: { hasMore: true },
         }),
       )
       .mockResolvedValueOnce(
         createJsonResponse({
-          items: [
+          data: [
             {
               slug: "beta",
               name: "Beta",
@@ -44,7 +44,7 @@ describe("createTrustMrrClient", () => {
               revenue: { total: 9000, last30Days: 3000 },
             },
           ],
-          nextPage: null,
+          meta: { hasMore: false },
         }),
       );
 
@@ -58,19 +58,24 @@ describe("createTrustMrrClient", () => {
 
     expect(startups.map((item) => item.slug)).toEqual(["alpha", "beta"]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/startups?page=1&pageSize=50");
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain("/startups?page=2&pageSize=50");
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/startups?page=1&limit=50");
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain("/startups?page=2&limit=50");
   });
 
   it("fetches startup detail payload", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse({
-        slug: "alpha",
-        description: "AI assistant",
-        targetAudience: "Founders",
-        onSale: true,
-        askingPrice: 30000,
-        techStack: ["TypeScript", "SQLite"],
+        data: {
+          slug: "alpha",
+          description: "AI assistant",
+          targetAudience: "Founders",
+          onSale: true,
+          askingPrice: 30000,
+          techStack: [
+            { slug: "typescript", category: "language" },
+            { slug: "sqlite", category: "database" },
+          ],
+        },
       }),
     );
 
@@ -88,7 +93,7 @@ describe("createTrustMrrClient", () => {
       targetAudience: "Founders",
       onSale: true,
       askingPrice: 30000,
-      techStack: ["TypeScript", "SQLite"],
+      techStack: ["typescript", "sqlite"],
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/startups/alpha");
   });
@@ -96,8 +101,8 @@ describe("createTrustMrrClient", () => {
   it("passes a proxy dispatcher when HTTPS_PROXY is configured", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse({
-        items: [],
-        nextPage: null,
+        data: [],
+        meta: { hasMore: false },
       }),
     );
 

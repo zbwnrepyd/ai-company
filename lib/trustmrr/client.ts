@@ -51,12 +51,12 @@ export function createTrustMrrClient(options?: {
   return {
     async listStartupsPage(page: number, pageSize = 50) {
       const payload = trustMrrStartupListResponseSchema.parse(
-        await request<unknown>(`/startups?page=${page}&pageSize=${pageSize}`),
+        await request<unknown>(`/startups?page=${page}&limit=${pageSize}`),
       );
 
       return {
-        items: payload.items,
-        nextPage: payload.nextPage ?? null,
+        items: payload.data,
+        nextPage: payload.meta?.hasMore ? page + 1 : null,
       };
     },
     async listAllStartups() {
