@@ -24,15 +24,28 @@ export function createTrustMrrClient(options?: {
   baseUrl?: string;
   fetch?: FetchLike;
   env?: NodeJS.ProcessEnv;
+  sleep?: (ms: number) => Promise<void>;
 }): TrustMrrClient {
   const envSource = options?.env ?? process.env;
   const baseUrl = (options?.baseUrl ?? getEnv(envSource).TRUSTMRR_BASE_URL).replace(/\/+$/, "");
   const apiKey = options?.apiKey ?? getTrustMrrApiKey(envSource);
   const fetchImpl = options?.fetch ?? fetch;
+  const sleep = options?.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const proxyUrl = getTrustMrrProxyUrl(envSource);
   const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
 
-  async function request<T>(path: string) {
+  function getRetryDelayMs(response: Response) {
+    const retryAfterHeader = response.headers.get("retry-after");
+    const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : NaN;
+
+    if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+      return retryAfterSeconds * 1000;
+    }
+
+    return 65_000;
+  }
+
+  async function request<T>(path: string, attempt = 0): Promise<T> {
     const response = await fetchImpl(`${baseUrl}${path}`, {
       headers: {
         authorization: `Bearer ${apiKey}`,
@@ -40,6 +53,11 @@ export function createTrustMrrClient(options?: {
       },
       ...(dispatcher ? ({ dispatcher } satisfies { dispatcher: Dispatcher }) : {}),
     } as RequestInit & { dispatcher?: Dispatcher });
+
+    if (response.status === 429 && attempt < 2) {
+      await sleep(getRetryDelayMs(response));
+      return request<T>(path, attempt + 1);
+    }
 
     if (!response.ok) {
       throw new Error(`TrustMRR request failed with status ${response.status}`);

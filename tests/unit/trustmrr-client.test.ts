@@ -9,6 +9,13 @@ function createJsonResponse(body: unknown) {
   });
 }
 
+function createRateLimitedResponse(retryAfterSeconds = 1) {
+  return new Response("Too Many Requests", {
+    status: 429,
+    headers: { "retry-after": String(retryAfterSeconds) },
+  });
+}
+
 describe("createTrustMrrClient", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -125,5 +132,30 @@ describe("createTrustMrrClient", () => {
       | undefined;
 
     expect(init?.dispatcher).toBeDefined();
+  });
+
+  it("retries after a 429 response", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createRateLimitedResponse(1))
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          data: [],
+          meta: { hasMore: false },
+        }),
+      );
+    const sleepMock = vi.fn().mockResolvedValue(undefined);
+
+    const client = createTrustMrrClient({
+      apiKey: "test-key",
+      baseUrl: "https://trustmrr.example/api/v1",
+      fetch: fetchMock,
+      sleep: sleepMock,
+    });
+
+    await client.listStartupsPage(1);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sleepMock).toHaveBeenCalledWith(1000);
   });
 });
