@@ -1,0 +1,17 @@
+.next
+.turbo
+.vercel
+coverage
+dist
+out
+node_modules
+.DS_Store
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+.superpowers
