@@ -17,7 +17,14 @@ export async function runDailySnapshot(input?: {
 
   const snapshotDate = input?.snapshotDate ?? new Date().toISOString().slice(0, 10);
   const client = input?.client ?? createTrustMrrClient();
-  const startups = await client.listAllStartups();
+  const startups = await client.listAllStartups({
+    pageDelayMs: 3_500,
+    onPage: ({ page, pageSize, totalSoFar }) => {
+      console.log(
+        `[snapshot] fetched page ${page} (${pageSize}/page), accumulated ${totalSoFar} startups`,
+      );
+    },
+  });
 
   saveDailySnapshots(snapshotDate, startups, database);
 

@@ -69,6 +69,54 @@ describe("createTrustMrrClient", () => {
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain("/startups?page=2&limit=50");
   });
 
+  it("waits between pages when pageDelayMs is provided", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          data: [
+            {
+              slug: "alpha",
+              name: "Alpha",
+              icon: "https://cdn.example.com/alpha.png",
+              rank: 1,
+              growth30d: 12,
+              revenue: { total: 12000, last30Days: 5000 },
+            },
+          ],
+          meta: { hasMore: true },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          data: [
+            {
+              slug: "beta",
+              name: "Beta",
+              icon: null,
+              rank: 2,
+              growth30d: 10,
+              revenue: { total: 9000, last30Days: 3000 },
+            },
+          ],
+          meta: { hasMore: false },
+        }),
+      );
+    const sleepMock = vi.fn().mockResolvedValue(undefined);
+
+    const client = createTrustMrrClient({
+      apiKey: "test-key",
+      baseUrl: "https://trustmrr.example/api/v1",
+      fetch: fetchMock,
+      sleep: sleepMock,
+    });
+
+    await client.listAllStartups({ pageDelayMs: 3500 });
+
+    expect(sleepMock).toHaveBeenCalledTimes(1);
+    expect(sleepMock).toHaveBeenCalledWith(3500);
+  });
+
   it("fetches startup detail payload", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse({
